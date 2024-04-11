@@ -2,6 +2,7 @@ package main
 
 import (
 	"math"
+	"project_go/syntax/variables/demo"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -41,6 +42,8 @@ func main() {
 	String()
 	Byte()
 	Bool()
+	// 当问全局变量
+	println(demo.D)
 }
 
 func String() {
@@ -81,5 +84,5 @@ func Bool() {
 	println(!a)
 	// !(a&&b) = !a || !b
 	// !(a||b) = !a && !b
-	
+
 }
