@@ -5,5 +5,6 @@ func main() {
 	//Array1()
 	//Slice()
 	//Subslice()
-	Shareslice()
+	//Shareslice()
+	Map()
 }
