@@ -58,5 +58,5 @@ func deleteByIndexDerict[T any](index int, len int, vals []T) []T {
 	for i := index; i < len-1; i++ {
 		vals[i] = vals[i+1]
 	}
-	return vals
+	return vals[:len-1]
 }
