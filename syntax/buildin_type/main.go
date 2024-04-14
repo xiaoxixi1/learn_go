@@ -3,7 +3,7 @@ package main
 func main() {
 	// Array()
 	//Array1()
-	//Slice()
+	Slice()
 	//Subslice()
 	//Shareslice()
 	Map()
