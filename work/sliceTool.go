@@ -24,7 +24,6 @@ package main
 */
 const sliceShinkThreshold = 256
 const shrinkFactor float32 = 1.25
-const freeFactor float32 = 0.5
 
 func deleteByIndex[T any](index int, vals []T) []T {
 	if index < 0 || index > len(vals) {
