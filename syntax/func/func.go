@@ -1,11 +1,14 @@
 package main
 
+import "fmt"
+
 // 方法签名：方法名+参数+返回值
 
 func main() {
 	Invoke()
 	Func5("黎晨曦")
 	Func5("黎晨曦", "晨曦", "xi")
+	Func6()
 	Defer()
 	DeferClosure()
 	DeferClosure1()
@@ -58,7 +61,7 @@ func Func4(str string) (str1 string, err error) {
 /*
 *
 
-		不定参数：alise可以传入int最大值个参数
+		不定参数：alise可以传入int最大值个参数，也可以不传
 		不定参数一定是放再最后一个参数
 	    不定参数在方法内部可被当成切片使用
 */
@@ -66,4 +69,8 @@ func Func5(name string, alise ...string) {
 	if len(alise) != 0 {
 		println(alise[0])
 	}
+}
+
+func Func6(alise ...int) {
+	fmt.Println("不定参数，我不传任何值")
 }
