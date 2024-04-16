@@ -3,6 +3,10 @@ package web
 import (
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"project_go/webbook/internal/domain"
+	"project_go/webbook/internal/repository"
+	"project_go/webbook/internal/service"
+
 	//"regexp" // 官方正则表达式不支持?=的写法
 	regexp "github.com/dlclark/regexp2"
 )
@@ -17,6 +21,7 @@ type UserHandler struct {
 	// 使用正则表达式预编译来提高性能
 	emailRegex    *regexp.Regexp
 	passwordRegex *regexp.Regexp
+	svc           *service.UserService
 }
 
 const (
@@ -28,6 +33,7 @@ func NewUserHandler() *UserHandler {
 	return &UserHandler{
 		emailRegex:    regexp.MustCompile(emailRegexPattern, regexp.None),
 		passwordRegex: regexp.MustCompile(passwordRegexPattern, regexp.None),
+		svc:           service.NewUserService(&repository.UserRepository{}),
 	}
 }
 
@@ -50,12 +56,12 @@ func (h *UserHandler) RegisterRoutes(server *gin.Engine) {
 // 注册用户
 func (h *UserHandler) SignUp(cxt *gin.Context) {
 	// 在内部定义结构体来接收请求参数
-	type User struct {
+	type SignUpReq struct {
 		Email           string `json:"email"`
 		Password        string `json:"password"`
 		ConfirmPassword string `json:confirmPassword`
 	}
-	var req User
+	var req SignUpReq
 	// Bind会根据http的Content-type来处理，如果请求是json格式，content-type就是application/json,gin就会使用json反序列化
 	// 如果格式不正确，Bind会自动返回一个400的错误码
 	if err := cxt.Bind(&req); err != nil {
@@ -89,6 +95,14 @@ func (h *UserHandler) SignUp(cxt *gin.Context) {
 
 	if req.Password != req.ConfirmPassword {
 		cxt.String(http.StatusOK, "两次输入密码不一致")
+		return
+	}
+	err = h.svc.SignUp(cxt, domain.User{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+	if err != nil {
+		cxt.String(http.StatusOK, "系统错误")
 		return
 	}
 	cxt.String(http.StatusOK, "注册成功")
