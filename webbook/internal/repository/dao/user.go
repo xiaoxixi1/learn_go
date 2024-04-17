@@ -18,7 +18,7 @@ type UserDao struct {
 func NewUserDao(db *gorm.DB) *UserDao {
 	return &UserDao{db: db}
 }
-func (ud *UserDao) Insert(cxt context.Context, user User) error {
+func (ud *UserDao) Insert(cxt context.Context, user *User) error {
 	now := time.Now().UnixMilli()
 	user.CTime = now
 	user.UTime = now
@@ -41,7 +41,7 @@ func (ud *UserDao) Insert(cxt context.Context, user User) error {
 	        比如有些字段在数据库中是JSON格式存储的，但是在domain里面会被转化成结构体
 */
 type User struct {
-	Id       string `gorm:"primaryKey,autoIncrement"`
+	Id       int64  `gorm:"primaryKey,autoIncrement"`
 	Email    string `gorm:"unique"`
 	Password string
 	// 创建时间，使用UTC 0的毫秒数，时区的转换一般统一让前端转换，或者留到要传给前端时转换
