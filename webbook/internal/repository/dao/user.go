@@ -2,9 +2,14 @@ package dao
 
 import (
 	"context"
+	"errors"
+	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 	"time"
 )
+
+// 预定义邮箱冲突的错误
+var EmailDuplicateError = errors.New("邮箱冲突")
 
 type UserDao struct {
 	db *gorm.DB
@@ -17,7 +22,15 @@ func (ud *UserDao) Insert(cxt context.Context, user User) error {
 	now := time.Now().UnixMilli()
 	user.CTime = now
 	user.UTime = now
-	return ud.db.WithContext(cxt).Create(user).Error
+	err := ud.db.WithContext(cxt).Create(user).Error
+	if msg, ok := err.(*mysql.MySQLError); ok {
+		const duplicateError uint64 = 1062
+		if msg.Number == 1062 {
+			return EmailDuplicateError
+		}
+
+	}
+	return err
 }
 
 /*

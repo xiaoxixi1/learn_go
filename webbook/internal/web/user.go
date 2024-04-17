@@ -25,7 +25,7 @@ type UserHandler struct {
 
 const (
 	emailRegexPattern    = "^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$"
-	passwordRegexPattern = `^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$`
+	passwordRegexPattern = `^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,72}$`
 )
 
 func NewUserHandler(svc *service.UserService) *UserHandler {
@@ -96,15 +96,21 @@ func (h *UserHandler) SignUp(cxt *gin.Context) {
 		cxt.String(http.StatusOK, "两次输入密码不一致")
 		return
 	}
+	// 解决邮箱冲突
 	err = h.svc.SignUp(cxt, domain.User{
 		Email:    req.Email,
 		Password: req.Password,
 	})
-	if err != nil {
-		cxt.String(http.StatusOK, "系统错误")
+	switch err {
+	case nil:
+		cxt.String(http.StatusOK, "注册成功")
 		return
+	case service.EmailDuplicateError:
+		cxt.String(http.StatusOK, "邮箱冲突")
+		return
+	default:
+		cxt.String(http.StatusOK, "系统错误")
 	}
-	cxt.String(http.StatusOK, "注册成功")
 }
 
 // 登录用户

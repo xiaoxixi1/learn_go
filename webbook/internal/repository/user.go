@@ -6,6 +6,8 @@ import (
 	"project_go/webbook/internal/repository/dao"
 )
 
+var EmailDuplicateError = dao.EmailDuplicateError
+
 type UserRepository struct {
 	dao *dao.UserDao
 }
