@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"project_go/webbook/internal/domain"
-	"project_go/webbook/internal/repository"
 	"project_go/webbook/internal/service"
 
 	//"regexp" // 官方正则表达式不支持?=的写法
@@ -29,11 +28,11 @@ const (
 	passwordRegexPattern = `^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$`
 )
 
-func NewUserHandler() *UserHandler {
+func NewUserHandler(svc *service.UserService) *UserHandler {
 	return &UserHandler{
 		emailRegex:    regexp.MustCompile(emailRegexPattern, regexp.None),
 		passwordRegex: regexp.MustCompile(passwordRegexPattern, regexp.None),
-		svc:           service.NewUserService(&repository.UserRepository{}),
+		svc:           svc,
 	}
 }
 

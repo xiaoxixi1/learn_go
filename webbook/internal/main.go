@@ -3,12 +3,38 @@ package main
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"project_go/webbook/internal/repository"
+	"project_go/webbook/internal/repository/dao"
+	"project_go/webbook/internal/service"
 	"project_go/webbook/internal/web"
 	"time"
 )
 
 func main() {
+	db := InitDb()
+	server := InitWebServer()
+	ud := dao.NewUserDao(db)
+	ur := repository.NewUseRepository(ud)
+	us := service.NewUserService(ur)
+	userHandler := web.NewUserHandler(us)
+	userHandler.RegisterRoutes(server)
+	server.Run(":8080")
+}
+
+func InitDb() *gorm.DB {
+	db, err := gorm.Open(mysql.Open("root:Jike1504240602*@tcp(localhost:13306)/webook"))
+	if err != nil {
+		panic("failed to connect database")
+	}
+	dao.InitTables(db)
+	return db
+}
+
+func InitWebServer() *gin.Engine {
 	server := gin.Default()
+
 	/**
 	  解决跨域问题
 	  跨域问题：只要前端到后台的协议，域名+端口有一个不相同就会存在跨域问题
@@ -31,7 +57,5 @@ func main() {
 	}), func(ctx *gin.Context) {
 		println("这里执行一个middleware")
 	})
-	userHandler := web.NewUserHandler()
-	userHandler.RegisterRoutes(server)
-	server.Run(":8080")
+	return server
 }

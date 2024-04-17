@@ -10,7 +10,7 @@ type UserRepository struct {
 	dao *dao.UserDao
 }
 
-func newUseRepository(dao *dao.UserDao) *UserRepository {
+func NewUseRepository(dao *dao.UserDao) *UserRepository {
 	return &UserRepository{dao: dao}
 }
 func (repo *UserRepository) Create(cxt context.Context, user domain.User) error {
