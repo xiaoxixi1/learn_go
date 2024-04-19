@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -9,6 +11,7 @@ import (
 	"project_go/webbook/internal/repository/dao"
 	"project_go/webbook/internal/service"
 	"project_go/webbook/internal/web"
+	"project_go/webbook/internal/web/middleware"
 	"time"
 )
 
@@ -57,5 +60,10 @@ func InitWebServer() *gin.Engine {
 	}), func(ctx *gin.Context) {
 		println("这里执行一个middleware")
 	})
+	// 创建两个middleware,一个初始化session,一个取session检验是否登录
+	store := cookie.NewStore([]byte("secret"))
+	server.Use(sessions.Sessions("ssid", store))
+	login := &middleware.LoginMiddleware{}
+	server.Use(login.CheckLoginBuild())
 	return server
 }

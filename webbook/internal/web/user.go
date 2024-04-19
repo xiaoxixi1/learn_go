@@ -1,10 +1,12 @@
 package web
 
 import (
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"project_go/webbook/internal/domain"
 	"project_go/webbook/internal/service"
+	"strconv"
 
 	//"regexp" // 官方正则表达式不支持?=的写法
 	regexp "github.com/dlclark/regexp2"
@@ -18,21 +20,30 @@ import (
 */
 type UserHandler struct {
 	// 使用正则表达式预编译来提高性能
-	emailRegex    *regexp.Regexp
-	passwordRegex *regexp.Regexp
-	svc           *service.UserService
+	emailRegex           *regexp.Regexp
+	passwordRegex        *regexp.Regexp
+	nameRegex            *regexp.Regexp
+	birthdayRegex        *regexp.Regexp
+	personalProfileRegex *regexp.Regexp
+	svc                  *service.UserService
 }
 
 const (
-	emailRegexPattern    = "^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$"
-	passwordRegexPattern = `^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,72}$`
+	emailRegexPattern           = "^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$"
+	passwordRegexPattern        = `^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,72}$`
+	nameRegexPattern            = `^[a-zA-Z0-9_]{4,16}$`
+	birthdayRegexPattern        = `^\d{4}-\d{2}-\d{2}$`
+	personalProfileRegexPattern = `^[\u4e00-\u9fa5]{1,100}$|^[A-Za-z\s]{1,140}$`
 )
 
 func NewUserHandler(svc *service.UserService) *UserHandler {
 	return &UserHandler{
-		emailRegex:    regexp.MustCompile(emailRegexPattern, regexp.None),
-		passwordRegex: regexp.MustCompile(passwordRegexPattern, regexp.None),
-		svc:           svc,
+		emailRegex:           regexp.MustCompile(emailRegexPattern, regexp.None),
+		passwordRegex:        regexp.MustCompile(passwordRegexPattern, regexp.None),
+		nameRegex:            regexp.MustCompile(nameRegexPattern, regexp.None),
+		birthdayRegex:        regexp.MustCompile(birthdayRegexPattern, regexp.None),
+		personalProfileRegex: regexp.MustCompile(personalProfileRegexPattern, regexp.None),
+		svc:                  svc,
 	}
 }
 
@@ -115,15 +126,125 @@ func (h *UserHandler) SignUp(cxt *gin.Context) {
 
 // 登录用户
 func (h *UserHandler) Login(cxt *gin.Context) {
+	type LoginReq struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	var req LoginReq
+	if err := cxt.Bind(&req); err != nil {
+		return
+	}
+	us, err := h.svc.Login(cxt, req.Email, req.Password)
+	switch err {
+	case nil:
+		sess := sessions.Default(cxt)
+		sess.Set("userid", us.Id)
+		sess.Options(sessions.Options{
+			// 有效时间15分钟
+			MaxAge: 900,
+		})
+		err = sess.Save()
+		if err != nil {
+			cxt.String(http.StatusOK, "系统错误")
+			return
+		}
+		cxt.String(http.StatusOK, "登录成功")
+		return
+	case service.InvalidPasswordOrUser:
+		cxt.String(http.StatusOK, "账号或者密码不正确")
+		return
+	default:
+		cxt.String(http.StatusOK, "系统错误")
+	}
 
 }
 
 // 查看用户信息
 func (h *UserHandler) Profile(cxt *gin.Context) {
-
+	type ProfileResponse struct {
+		Email           string `json:"email"`
+		Password        string `json:"password"`
+		Name            string `json:"name"`
+		Birthday        string `json:"birthday"`
+		PersonalProfile string `json:"PersonalProfile"`
+	}
+	id := cxt.Query("id")
+	userid, err := strconv.Atoi(id)
+	if err != nil {
+		cxt.String(http.StatusOK, "系统错误")
+		return
+	}
+	user, err := h.svc.Profile(cxt, int64(userid))
+	switch err {
+	case service.UserNotFoundError:
+		cxt.String(http.StatusOK, "该用户不存在")
+		return
+	case nil:
+		cxt.JSON(http.StatusOK, ProfileResponse{
+			Email:           user.Email,
+			Name:            user.Name,
+			Birthday:        user.Birthday,
+			Password:        user.Password,
+			PersonalProfile: user.PersonalProfile,
+		})
+		return
+	default:
+		cxt.String(http.StatusOK, "系统错误")
+	}
 }
 
 // 修改用户信息
 func (h *UserHandler) Edit(cxt *gin.Context) {
+	type EditReq struct {
+		Id              int64  `json:"Id"`
+		Name            string `json:"name"`
+		Birthday        string `json:"birthday"`
+		PersonalProfile string `json:"PersonalProfile"`
+	}
+
+	var req EditReq
+	if err := cxt.Bind(&req); err != nil {
+		return
+	}
+	isName, err := h.nameRegex.MatchString(req.Name)
+	if err != nil {
+		cxt.String(http.StatusOK, "系统错误")
+		return
+	}
+	if !isName {
+		cxt.String(http.StatusOK, "昵称格式不正确")
+		return
+	}
+
+	isBirthday, err := h.birthdayRegex.MatchString(req.Birthday)
+	if err != nil {
+		cxt.String(http.StatusOK, "系统错误")
+		return
+	}
+	if !isBirthday {
+		cxt.String(http.StatusOK, "生日格式不正确")
+		return
+	}
+
+	isPersonalProfile, err := h.personalProfileRegex.MatchString(req.PersonalProfile)
+	if err != nil {
+		cxt.String(http.StatusOK, "系统错误")
+		return
+	}
+	if !isPersonalProfile {
+		cxt.String(http.StatusOK, "个人简介格式不正确")
+		return
+	}
+	err = h.svc.Edit(cxt, domain.User{
+		Id:              req.Id,
+		Name:            req.Name,
+		Birthday:        req.Birthday,
+		PersonalProfile: req.PersonalProfile,
+	})
+	if err != nil {
+		cxt.String(http.StatusOK, "更新失败")
+		return
+	}
+	cxt.String(http.StatusOK, "更新成功")
 
 }
