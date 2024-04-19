@@ -50,7 +50,7 @@ func (us *UserService) Login(cxt context.Context, email string, password string)
 }
 
 func (us *UserService) Edit(cxt *gin.Context, user domain.User) error {
-	return us.repo.Update(cxt, user)
+	return us.repo.UpdateNoSensitiveInfo(cxt, user)
 }
 
 func (us *UserService) Profile(cxt *gin.Context, userid int64) (domain.User, error) {

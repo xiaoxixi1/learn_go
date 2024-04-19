@@ -64,7 +64,7 @@ type User struct {
 	Id              int64  `gorm:"primaryKey,autoIncrement"`
 	Email           string `gorm:"unique"`
 	Name            string
-	Birthday        string
+	Birthday        int64
 	PersonalProfile string
 	Password        string
 	// 创建时间，使用UTC 0的毫秒数，时区的转换一般统一让前端转换，或者留到要传给前端时转换

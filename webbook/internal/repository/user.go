@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"project_go/webbook/internal/domain"
 	"project_go/webbook/internal/repository/dao"
+	"time"
 )
 
 var (
@@ -40,16 +41,16 @@ func (repo *UserRepository) toDomain(user dao.User) domain.User {
 		Email:           user.Email,
 		Name:            user.Name,
 		Password:        user.Password,
-		Birthday:        user.Birthday,
+		Birthday:        time.UnixMilli(user.Birthday),
 		PersonalProfile: user.PersonalProfile,
 	}
 }
 
-func (repo *UserRepository) Update(cxt *gin.Context, user domain.User) error {
+func (repo *UserRepository) UpdateNoSensitiveInfo(cxt *gin.Context, user domain.User) error {
 	return repo.dao.Update(cxt, dao.User{
 		Id:              user.Id,
 		Name:            user.Name,
-		Birthday:        user.Birthday,
+		Birthday:        user.Birthday.UnixMilli(),
 		PersonalProfile: user.PersonalProfile,
 	})
 }

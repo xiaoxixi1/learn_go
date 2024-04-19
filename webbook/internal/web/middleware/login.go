@@ -22,5 +22,6 @@ func (lm *LoginMiddleware) CheckLoginBuild() gin.HandlerFunc {
 			cxt.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
+
 	}
 }
