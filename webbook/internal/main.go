@@ -3,8 +3,9 @@ package main
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/redis"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"project_go/webbook/internal/repository"
@@ -12,6 +13,7 @@ import (
 	"project_go/webbook/internal/service"
 	"project_go/webbook/internal/web"
 	"project_go/webbook/internal/web/middleware"
+	"project_go/webbook/pkg/ginx/middleware/ratelimit"
 	"time"
 )
 
@@ -47,6 +49,11 @@ func InitWebServer() *gin.Engine {
 	  middleware接入当时：Engine.Use ，这里Use的参数可以传入任意个HandleFunc
 	  HandlerFunc是func的衍生类型：type HandlerFunc func(*Context)
 	*/
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+	//每秒100个请求，之所以使用redis进行限流，是针对集群多实例的场景
+	server.Use(ratelimit.NewBuilder(redisClient, time.Second, 100).Build())
 	server.Use(cors.New(cors.Config{
 		AllowHeaders:     []string{"authorization", "Content-Type"},
 		AllowCredentials: true,
@@ -76,20 +83,20 @@ func InitWebServer() *gin.Engine {
 func useSession(server *gin.Engine) {
 	// 创建两个middleware,一个初始化session,一个取session检验是否登录
 	// 基于cookie存储session数据
-	//store := cookie.NewStore([]byte("secret"))
+	store := cookie.NewStore([]byte("secret"))
 	// 基于memstore存储session数据
 	// 第一个参数是authentication key，最好是32位或者64位,是指身份认证
 	// 第二个参数是encryption key，是指数据加密
 	//store := memstore.NewStore([]byte("FBP932qsW4e3STABJLbKAjpGS5EVg6sqNTLHXw5CCLYkHp84SUxFAnh3zfUfRmVd"), []byte("Bhy3mfsThsmBvfpNwyCF2FEzS4GfR8v3pnVdfLAXR2JSY5fuhJZVGNgK5e9hc9Gh"))
 	//基于redis存储session数据
 	// 第一个参数是：最大连接数
-	store, err := redis.NewStore(16, "tcp",
-		"localhost:6379", "",
-		[]byte("FBP932qsW4e3STABJLbKAjpGS5EVg6sqNTLHXw5CCLYkHp84SUxFAnh3zfUfRmVd"),
-		[]byte("Bhy3mfsThsmBvfpNwyCF2FEzS4GfR8v3"))
-	if err != nil {
-		panic(err)
-	}
+	//store, err := redis.NewStore(16, "tcp",
+	//	"localhost:6379", "",
+	//	[]byte("FBP932qsW4e3STABJLbKAjpGS5EVg6sqNTLHXw5CCLYkHp84SUxFAnh3zfUfRmVd"),
+	//	[]byte("Bhy3mfsThsmBvfpNwyCF2FEzS4GfR8v3"))
+	//if err != nil {
+	//	panic(err)
+	//}
 	/**
 	cookie,memstore,redis三个实现中，都需要传入两个key：
 	    	authentication key：身份认证
