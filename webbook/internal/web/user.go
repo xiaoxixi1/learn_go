@@ -134,8 +134,11 @@ func (h *UserHandler) Login(cxt *gin.Context) {
 		sess := sessions.Default(cxt)
 		sess.Set("userid", us.Id)
 		sess.Options(sessions.Options{
+			// session。Options里面的参数，除了MaxAge有多层含义之后，其他参数就是cookie中那些参数的含义
+			// 可以理解位session用这些选项来初始化cookie
+			// MaxAge一方面用来控制cookie，也用来控制session中key，value过期时间
 			// 有效时间15分钟
-			MaxAge: 900,
+			MaxAge: 60,
 		})
 		err = sess.Save()
 		if err != nil {

@@ -29,3 +29,10 @@ func main() {
 	ck := http.Cookie{}
 	fmt.Printf("%v \n", ck)
 }
+
+/**
+  session刷新：
+    1 什么时候刷新？ 定时，token长短
+    2 在哪刷新？ middleware登录校验时候刷新
+    3 登录状态保持多久
+*/
