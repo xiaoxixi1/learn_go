@@ -56,10 +56,24 @@ func InitWebServer() *gin.Engine {
 			//	}
 			return true
 		},
-		MaxAge: 12 * time.Hour,
+		// 因为自定义了头部，所以跨域要加上配置
+		// 约定后端放入x-jwt-token中，前端通过authorization 传回后端
+		ExposeHeaders: []string{"x-jwt-token"},
+		MaxAge:        12 * time.Hour,
 	}), func(ctx *gin.Context) {
 		println("这里执行一个middleware")
 	})
+	useJWT(server)
+	return server
+}
+
+/**
+  从这里session的存储方法可以发现，这里存储session数据被抽象成了一个接口，
+  GIN提供了不同的实现，所以就可以自由切换了
+  所以当设计核心系统的时候，或者打算提供什么功能给用户的时候，一定要问问自己，将来有没有可能需要不同的实现
+*/
+
+func useSession(server *gin.Engine) {
 	// 创建两个middleware,一个初始化session,一个取session检验是否登录
 	// 基于cookie存储session数据
 	//store := cookie.NewStore([]byte("secret"))
@@ -82,15 +96,12 @@ func InitWebServer() *gin.Engine {
 	        encryption key：数据加密
 	  这两个key再加上授权（权限控制）就是信息安全的三个核心概念
 	*/
-
 	server.Use(sessions.Sessions("ssid", store))
 	login := &middleware.LoginMiddleware{}
 	server.Use(login.CheckLoginBuild())
-	return server
 }
 
-/**
-  从这里session的存储方法可以发现，这里存储session数据被抽象成了一个接口，
-  GIN提供了不同的实现，所以就可以自由切换了
-  所以当设计核心系统的时候，或者打算提供什么功能给用户的时候，一定要问问自己，将来有没有可能需要不同的实现
-*/
+func useJWT(server *gin.Engine) {
+	login := &middleware.LoginJWTMiddleware{}
+	server.Use(login.CheckLoginJWTBuild())
+}

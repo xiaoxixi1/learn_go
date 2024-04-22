@@ -7,9 +7,9 @@ import (
 	"project_go/webbook/internal/domain"
 	"project_go/webbook/internal/service"
 	"time"
-
 	//"regexp" // 官方正则表达式不支持?=的写法
 	regexp "github.com/dlclark/regexp2"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 /*
@@ -52,7 +52,8 @@ func (h *UserHandler) RegisterRoutes(server *gin.Engine) {
 	// 上面可以简化成分组路由
 	ug := server.Group("/users")
 	ug.POST("/signup", h.SignUp)
-	ug.POST("/login", h.Login)
+	//ug.POST("/login", h.Login)
+	ug.POST("/login", h.LoginJWT)
 	ug.GET("/profile", h.Profile)
 	ug.POST("/edit", h.Edit)
 }
@@ -117,6 +118,42 @@ func (h *UserHandler) SignUp(cxt *gin.Context) {
 		cxt.String(http.StatusOK, "系统错误")
 	}
 }
+func (h *UserHandler) LoginJWT(cxt *gin.Context) {
+	type LoginReq struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	var req LoginReq
+	if err := cxt.Bind(&req); err != nil {
+		return
+	}
+	us, err := h.svc.Login(cxt, req.Email, req.Password)
+	switch err {
+	case nil:
+		us := UserClaim{
+			userid: us.Id,
+			RegisteredClaims: jwt.RegisteredClaims{
+				// 30S后过期
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * 30)),
+			},
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, us)
+		tokenStr, err := token.SignedString([]byte(JWTKEY))
+		if err != nil {
+			cxt.String(http.StatusOK, "系统错误")
+			return
+		}
+		// 自定义头部传输token，前端配合接收
+		cxt.Header("x-jwt-token", tokenStr)
+		cxt.String(http.StatusOK, "登录成功")
+		return
+	case service.InvalidPasswordOrUser:
+		cxt.String(http.StatusOK, "账号或者密码不正确")
+		return
+	default:
+		cxt.String(http.StatusOK, "系统错误")
+	}
+}
 
 // 登录用户
 func (h *UserHandler) Login(cxt *gin.Context) {
@@ -165,12 +202,19 @@ func (h *UserHandler) Profile(cxt *gin.Context) {
 		Birthday        string `json:"birthday"`
 		PersonalProfile string `json:"PersonalProfile"`
 	}
-	sess := sessions.Default(cxt)
+	/**	sess := sessions.Default(cxt)
 	userId, ok := sess.Get("userid").(int64)
 	if !ok {
 		cxt.String(http.StatusOK, "系统错误")
 		return
+	}*/
+	// 使用jwt
+	uc, ok := cxt.MustGet("user").(UserClaim)
+	if !ok {
+		cxt.String(http.StatusOK, "系统错误")
+		return
 	}
+	userId := uc.userid
 	user, err := h.svc.Profile(cxt, userId)
 	switch err {
 	case service.UserNotFoundError:
@@ -234,3 +278,10 @@ func (h *UserHandler) Edit(cxt *gin.Context) {
 	cxt.String(http.StatusOK, "更新成功")
 
 }
+
+type UserClaim struct {
+	jwt.RegisteredClaims
+	userid int64
+}
+
+var JWTKEY = []byte("Bhy3mfsThsmBvfpNwyCF2FEzS4GfR8v4")
