@@ -5,7 +5,7 @@ metadata:
   name: webook
   #Deployment的规格水命
 spec:
-  replicas: 3 #3个副本
+  replicas: 2 #3个副本
   selector: #筛选器,k8s一堆pod,找到我管理的那三个
     matchLabels:
       app: webook #筛选条件是带这个标签

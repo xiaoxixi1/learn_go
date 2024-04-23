@@ -35,7 +35,7 @@ func main() {
 	//server.GET("/hello", func(context *gin.Context) {
 	//	context.String(http.StatusOK, "hello，启动成功了")
 	//})
-	server.Run(":8080")
+	server.Run(":8081")
 }
 
 func InitDb() *gorm.DB {
