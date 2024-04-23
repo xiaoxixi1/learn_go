@@ -1,0 +1,31 @@
+#k8s是一个配置驱动,或者说是元数据驱动,或者声名式的框架,根据 apiversion 来确定怎么解读
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webook
+  #Deployment的规格水命
+spec:
+  replicas: 3 #3个副本
+  selector: #筛选器,k8s一堆pod,找到我管理的那三个
+    matchLabels:
+      app: webook #筛选条件是带这个标签
+  template:  #pod创建模板
+    metadata:
+      labels:
+        #这里的webook一定要跟前面的selector的matchLables匹配上
+        app: webook
+        #这里指的是deployment管理的pod的模板
+    spec:
+      #pod里面运行的所有的Container
+      containers:
+        - name: webook
+          #这里使用的是docker构建的镜像,docker是实现OSI标准的,所以即使现在k8s声称不支持docke,但是这个镜像仍可以用
+          #实际上k8s操作的是OSI(OPen container interface)
+          image: learn_go/webook:v0.0.1
+          ports:
+            - containerPort: 8080
+#          args:
+#            - -c
+#            - sleep 99999
+#          command:
+#            - /bin/sh

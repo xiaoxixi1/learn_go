@@ -1,0 +1,12 @@
+apiVersion: v1
+#一个容器需要什么存储资源,是通过PersistentVolumeClaim来声明的
+kind: PersistentVolumeClaim
+metadata:
+  name: webook-mysql-pvc
+spec:
+  storageClassName: webook #这里的PersistentVolumeClaim和根据storageClassName跟对应的PersistentVolume进行绑定
+  accessModes:
+    - ReadWriteOnce #只能被一个pod读写
+  resources: #需要什么资源
+    requests:
+      storage: 1Gi

@@ -8,10 +8,16 @@ import (
 	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"project_go/webbook/internal/config"
 	"project_go/webbook/internal/repository"
 	"project_go/webbook/internal/repository/dao"
 	"project_go/webbook/internal/service"
 	"project_go/webbook/internal/web"
+
+	//"project_go/webbook/internal/repository"
+	//"project_go/webbook/internal/repository/dao"
+	//"project_go/webbook/internal/service"
+	//"project_go/webbook/internal/web"
 	"project_go/webbook/internal/web/middleware"
 	"project_go/webbook/pkg/ginx/middleware/ratelimit"
 	"time"
@@ -25,11 +31,15 @@ func main() {
 	us := service.NewUserService(ur)
 	userHandler := web.NewUserHandler(us)
 	userHandler.RegisterRoutes(server)
+	//server := gin.Default()
+	//server.GET("/hello", func(context *gin.Context) {
+	//	context.String(http.StatusOK, "hello，启动成功了")
+	//})
 	server.Run(":8080")
 }
 
 func InitDb() *gorm.DB {
-	db, err := gorm.Open(mysql.Open("root:Jike1504240602*@tcp(localhost:13306)/webook"))
+	db, err := gorm.Open(mysql.Open(config.Config.DB.DSN))
 	if err != nil {
 		panic("failed to connect database")
 	}
@@ -50,7 +60,7 @@ func InitWebServer() *gin.Engine {
 	  HandlerFunc是func的衍生类型：type HandlerFunc func(*Context)
 	*/
 	redisClient := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr: config.Config.Redis.Addr,
 	})
 	//每秒100个请求，之所以使用redis进行限流，是针对集群多实例的场景
 	server.Use(ratelimit.NewBuilder(redisClient, time.Second, 100).Build())

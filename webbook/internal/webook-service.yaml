@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: webook
+spec:
+  selector:
+    app: webook
+  ports:
+    - protocol: TCP
+      name: http
+      port: 80 #外部访问端口
+      targetPort: 8080 #pod对应的端口
+  type: ClusterIP
+  #type: LoadBalancer #loadBalance类型会进行负载金恒
+  

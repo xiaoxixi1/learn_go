@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: webook-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx #如果用的是别的Ingres,也要指定对应的名字
+  rules: #配置转发规则，基本上和平时配置的nginx差不多
+    - http:
+        paths:
+          - path: /users
+            pathType: Prefix
+            backend:
+              service:
+                name: webook
+                port:
+                  number: 80
+      host: localhost
+                
