@@ -131,10 +131,11 @@ func (h *UserHandler) LoginJWT(cxt *gin.Context) {
 	switch err {
 	case nil:
 		us := UserClaim{
-			userid: us.Id,
+			userid:    us.Id,
+			UserAgent: cxt.GetHeader("User-Agent"),
 			RegisteredClaims: jwt.RegisteredClaims{
 				// 30S后过期
-				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * 30)),
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * 60)),
 			},
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, us)
@@ -281,7 +282,8 @@ func (h *UserHandler) Edit(cxt *gin.Context) {
 
 type UserClaim struct {
 	jwt.RegisteredClaims
-	userid int64
+	userid    int64
+	UserAgent string
 }
 
 var JWTKEY = []byte("Bhy3mfsThsmBvfpNwyCF2FEzS4GfR8v4")

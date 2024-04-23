@@ -44,6 +44,11 @@ func (lm *LoginJWTMiddleware) CheckLoginJWTBuild() gin.HandlerFunc {
 			cxt.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
+		if uc.UserAgent != cxt.GetHeader("User-Agent") {
+			// 这个地方后面要买点，因为能够进来这个分支的，大概率是攻击者
+			cxt.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
 		// 刷新token
 		expireTime := uc.ExpiresAt
 		// 如果过期时间小于20s则进行刷新
