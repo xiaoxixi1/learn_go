@@ -9,7 +9,7 @@ spec:
     - protocol: TCP
       name: http
       port: 80 #外部访问端口
-      targetPort: 8080 #pod对应的端口
+      targetPort: 8081 #pod对应的端口
   type: ClusterIP
   #type: LoadBalancer #loadBalance类型会进行负载金恒
   

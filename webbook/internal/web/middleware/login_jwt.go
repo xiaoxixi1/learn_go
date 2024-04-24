@@ -16,6 +16,7 @@ type LoginJWTMiddleware struct {
 func (lm *LoginJWTMiddleware) CheckLoginJWTBuild() gin.HandlerFunc {
 	return func(cxt *gin.Context) {
 		url := cxt.Request.URL.Path
+		println(url)
 		if url == "/users/signup" || url == "/users/login" {
 			// 不需要校验
 			return
