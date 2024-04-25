@@ -9,14 +9,23 @@ import (
 )
 
 var tplId = "1877556"
+var ErrCodeSendTooMany = repository.SendTooManyError
 
 type CodeService struct {
 	repo *repository.CodeRepo
 	sms  sms.Service
 }
 
+func NewCodeService(repo *repository.CodeRepo, sms sms.Service) *CodeService {
+	return &CodeService{
+		repo: repo,
+		sms:  sms,
+	}
+}
+
 func (cs *CodeService) SendCode(cxt context.Context, biz, phone string) error {
 	code := cs.generate()
+	fmt.Printf("验证码：%s", code)
 	err := cs.repo.Set(cxt, biz, phone, code)
 	if err != nil {
 		return err

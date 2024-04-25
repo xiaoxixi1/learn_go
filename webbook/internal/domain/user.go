@@ -9,4 +9,5 @@ type User struct {
 	Name            string //昵称
 	Birthday        time.Time
 	PersonalProfile string // 个人简介
+	Phone           string
 }

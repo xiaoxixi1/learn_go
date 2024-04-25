@@ -7,15 +7,16 @@ import (
 
 var (
 	VerifyTooManyError = cache.VerifyTooManyError
+	SendTooManyError   = cache.SendTooManyError
 )
 
 type CodeRepo struct {
-	codeCache *cache.Codecache
+	codeCache *cache.CodeCache
 }
 
-func NewCodeRepo(codeCache cache.Codecache) *CodeRepo {
+func NewCodeRepo(codeCache *cache.CodeCache) *CodeRepo {
 	return &CodeRepo{
-		codeCache: &codeCache,
+		codeCache: codeCache,
 	}
 }
 

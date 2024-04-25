@@ -2,8 +2,8 @@ package dao
 
 import (
 	"context"
+	"database/sql"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 	"time"
@@ -11,8 +11,8 @@ import (
 
 // 预定义邮箱冲突的错误
 var (
-	EmailDuplicateError = errors.New("邮箱冲突")
-	RecordNotFoundErr   = gorm.ErrRecordNotFound
+	UserDuplicateError = errors.New("用户冲突")
+	RecordNotFoundErr  = gorm.ErrRecordNotFound
 )
 
 type UserDao struct {
@@ -30,7 +30,7 @@ func (ud *UserDao) Insert(cxt context.Context, user *User) error {
 	if msg, ok := err.(*mysql.MySQLError); ok {
 		const duplicateError uint64 = 1062
 		if msg.Number == 1062 {
-			return EmailDuplicateError
+			return UserDuplicateError
 		}
 
 	}
@@ -43,13 +43,19 @@ func (ud *UserDao) QueryByEmail(cxt context.Context, email string) (User, error)
 	return u, err
 }
 
-func (ud *UserDao) Update(cxt *gin.Context, user User) error {
+func (ud *UserDao) Update(cxt context.Context, user User) error {
 	return ud.db.WithContext(cxt).Model(&user).Updates(user).Error
 }
 
-func (ud *UserDao) QueryById(cxt *gin.Context, userid int64) (User, error) {
+func (ud *UserDao) QueryById(cxt context.Context, userid int64) (User, error) {
 	var result User
 	err := ud.db.WithContext(cxt).Model(User{Id: userid}).First(&result).Error
+	return result, err
+}
+
+func (ud *UserDao) QueryByPhone(cxt context.Context, phone string) (User, error) {
+	var result User
+	err := ud.db.WithContext(cxt).Where("phone=?", phone).First(&result).Error
 	return result, err
 }
 
@@ -61,8 +67,9 @@ func (ud *UserDao) QueryById(cxt *gin.Context, userid int64) (User, error) {
 	        比如有些字段在数据库中是JSON格式存储的，但是在domain里面会被转化成结构体
 */
 type User struct {
-	Id              int64  `gorm:"primaryKey,autoIncrement"`
-	Email           string `gorm:"unique"`
+	Id              int64          `gorm:"primaryKey,autoIncrement"`
+	Email           sql.NullString `gorm:"unique"`
+	Phone           sql.NullString `gorm:"unique"`
 	Name            string
 	Birthday        int64
 	PersonalProfile string

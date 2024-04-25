@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"project_go/webbook/internal/domain"
 	"time"
@@ -37,7 +36,7 @@ func (cache *UserCache) key(id int64) string {
 	return fmt.Sprintf("user:info:%d", id)
 }
 
-func (cache *UserCache) Set(cxt *gin.Context, us domain.User) error {
+func (cache *UserCache) Set(cxt context.Context, us domain.User) error {
 	key := cache.key(us.Id)
 	data, err := json.Marshal(us)
 	if err != nil {

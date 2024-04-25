@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"github.com/gin-gonic/gin"
+	"database/sql"
 	"project_go/webbook/internal/domain"
 	"project_go/webbook/internal/repository/cache"
 	"project_go/webbook/internal/repository/dao"
@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	EmailDuplicateError = dao.EmailDuplicateError
-	UserNotFoundErr     = dao.RecordNotFoundErr
+	UserDuplicateError = dao.UserDuplicateError
+	UserNotFoundErr    = dao.RecordNotFoundErr
 )
 
 type UserRepository struct {
@@ -26,10 +26,7 @@ func NewUseRepository(dao *dao.UserDao, cache *cache.UserCache) *UserRepository 
 	}
 }
 func (repo *UserRepository) Create(cxt context.Context, user domain.User) error {
-	return repo.dao.Insert(cxt, &dao.User{
-		Email:    user.Email,
-		Password: user.Password,
-	})
+	return repo.dao.Insert(cxt, repo.toEntity(user))
 }
 
 func (repo *UserRepository) FindByEmail(cxt context.Context, email string) (domain.User, error) {
@@ -43,7 +40,8 @@ func (repo *UserRepository) FindByEmail(cxt context.Context, email string) (doma
 func (repo *UserRepository) toDomain(user dao.User) domain.User {
 	return domain.User{
 		Id:              user.Id,
-		Email:           user.Email,
+		Email:           user.Email.String,
+		Phone:           user.Phone.String,
 		Name:            user.Name,
 		Password:        user.Password,
 		Birthday:        time.UnixMilli(user.Birthday),
@@ -51,7 +49,25 @@ func (repo *UserRepository) toDomain(user dao.User) domain.User {
 	}
 }
 
-func (repo *UserRepository) UpdateNoSensitiveInfo(cxt *gin.Context, user domain.User) error {
+func (repo *UserRepository) toEntity(user domain.User) *dao.User {
+	return &dao.User{
+		Id: user.Id,
+		Email: sql.NullString{
+			String: user.Email,
+			Valid:  user.Email != "",
+		},
+		Phone: sql.NullString{
+			String: user.Phone,
+			Valid:  user.Phone != "",
+		},
+		Name:            user.Name,
+		Password:        user.Password,
+		Birthday:        user.Birthday.UnixMilli(),
+		PersonalProfile: user.PersonalProfile,
+	}
+}
+
+func (repo *UserRepository) UpdateNoSensitiveInfo(cxt context.Context, user domain.User) error {
 	return repo.dao.Update(cxt, dao.User{
 		Id:              user.Id,
 		Name:            user.Name,
@@ -60,7 +76,7 @@ func (repo *UserRepository) UpdateNoSensitiveInfo(cxt *gin.Context, user domain.
 	})
 }
 
-func (repo *UserRepository) FindById(cxt *gin.Context, userid int64) (domain.User, error) {
+func (repo *UserRepository) FindById(cxt context.Context, userid int64) (domain.User, error) {
 	du, err := repo.c.Get(cxt, userid)
 	// 缓存命中
 	if err == nil {
@@ -73,4 +89,12 @@ func (repo *UserRepository) FindById(cxt *gin.Context, userid int64) (domain.Use
 	du = repo.toDomain(us)
 	err = repo.c.Set(cxt, du)
 	return du, nil
+}
+
+func (repo *UserRepository) FindByPhone(cxt context.Context, phone string) (domain.User, error) {
+	us, err := repo.dao.QueryByPhone(cxt, phone)
+	if err != nil {
+		return domain.User{}, err
+	}
+	return repo.toDomain(us), err
 }

@@ -24,20 +24,23 @@ type UserHandler struct {
 	passwordRegex *regexp.Regexp
 	nameRegex     *regexp.Regexp
 	svc           *service.UserService
+	codeSvc       *service.CodeService
 }
 
 const (
 	emailRegexPattern    = "^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$"
 	passwordRegexPattern = `^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,72}$`
 	nameRegexPattern     = `^[a-zA-Z0-9_]{4,16}$` //这里因为还限制了特殊字符，就暂时不用数据库字段长度来限制了
+	userBiz              = "userLogin"
 )
 
-func NewUserHandler(svc *service.UserService) *UserHandler {
+func NewUserHandler(svc *service.UserService, codeSvc *service.CodeService) *UserHandler {
 	return &UserHandler{
 		emailRegex:    regexp.MustCompile(emailRegexPattern, regexp.None),
 		passwordRegex: regexp.MustCompile(passwordRegexPattern, regexp.None),
 		nameRegex:     regexp.MustCompile(nameRegexPattern, regexp.None),
 		svc:           svc,
+		codeSvc:       codeSvc,
 	}
 }
 
@@ -56,6 +59,14 @@ func (h *UserHandler) RegisterRoutes(server *gin.Engine) {
 	ug.POST("/login", h.LoginJWT)
 	ug.GET("/profile", h.Profile)
 	ug.POST("/edit", h.Edit)
+	/**
+	  验证码登录增加2个接口:
+	    1 发送验证码
+	    2 校验验证码登录
+	*/
+	ug.POST("/login_sms/code/send", h.SmsSendLoginCode)
+	ug.POST("/login_sms", h.LoginSms)
+
 }
 
 // 注册用户
@@ -64,7 +75,7 @@ func (h *UserHandler) SignUp(cxt *gin.Context) {
 	type SignUpReq struct {
 		Email           string `json:"email"`
 		Password        string `json:"password"`
-		ConfirmPassword string `json:confirmPassword`
+		ConfirmPassword string `json:"confirmPassword"`
 	}
 	var req SignUpReq
 	// Bind会根据http的Content-type来处理，如果请求是json格式，content-type就是application/json,gin就会使用json反序列化
@@ -111,13 +122,14 @@ func (h *UserHandler) SignUp(cxt *gin.Context) {
 	case nil:
 		cxt.String(http.StatusOK, "注册成功")
 		return
-	case service.EmailDuplicateError:
+	case service.UserDuplicateError:
 		cxt.String(http.StatusOK, "邮箱冲突")
 		return
 	default:
 		cxt.String(http.StatusOK, "系统错误")
 	}
 }
+
 func (h *UserHandler) LoginJWT(cxt *gin.Context) {
 	type LoginReq struct {
 		Email    string `json:"email"`
@@ -130,23 +142,7 @@ func (h *UserHandler) LoginJWT(cxt *gin.Context) {
 	us, err := h.svc.Login(cxt, req.Email, req.Password)
 	switch err {
 	case nil:
-		us := UserClaim{
-			userid:    us.Id,
-			UserAgent: cxt.GetHeader("User-Agent"),
-			RegisteredClaims: jwt.RegisteredClaims{
-				// 30S后过期
-				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 60)),
-			},
-		}
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, us)
-		tokenStr, err := token.SignedString([]byte(JWTKEY))
-		if err != nil {
-			cxt.String(http.StatusOK, "系统错误")
-			return
-		}
-		// 自定义头部传输token，前端配合接收
-		cxt.Header("x-jwt-token", tokenStr)
-		cxt.String(http.StatusOK, "登录成功")
+		h.setToken(cxt, us.Id)
 		return
 	case service.InvalidPasswordOrUser:
 		cxt.String(http.StatusOK, "账号或者密码不正确")
@@ -154,6 +150,26 @@ func (h *UserHandler) LoginJWT(cxt *gin.Context) {
 	default:
 		cxt.String(http.StatusOK, "系统错误")
 	}
+}
+
+func (h *UserHandler) setToken(cxt *gin.Context, userId int64) {
+	us := UserClaim{
+		userid:    userId,
+		UserAgent: cxt.GetHeader("User-Agent"),
+		RegisteredClaims: jwt.RegisteredClaims{
+			// 30S后过期
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 60)),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, us)
+	tokenStr, err := token.SignedString([]byte(JWTKEY))
+	if err != nil {
+		cxt.String(http.StatusOK, "系统错误")
+		return
+	}
+	// 自定义头部传输token，前端配合接收
+	cxt.Header("x-jwt-token", tokenStr)
+	cxt.String(http.StatusOK, "登录成功")
 }
 
 // 登录用户
@@ -278,6 +294,87 @@ func (h *UserHandler) Edit(cxt *gin.Context) {
 	}
 	cxt.String(http.StatusOK, "更新成功")
 
+}
+
+// 发送验证码
+func (h *UserHandler) SmsSendLoginCode(cxt *gin.Context) {
+	type Req struct {
+		Phone string `json:"phone"`
+	}
+	var req Req
+	if err := cxt.Bind(&req); err != nil {
+		return
+	}
+	err := h.codeSvc.SendCode(cxt, userBiz, req.Phone)
+	switch err {
+	case nil:
+		cxt.JSON(http.StatusOK, Result{
+			Msg: "发送成功",
+		})
+		//cxt.String(http.StatusOK, "发送成功")
+	case service.ErrCodeSendTooMany:
+		cxt.JSON(http.StatusOK, Result{
+			Code: 400,
+			Msg:  "短信发送太频繁，请稍后再试",
+		})
+	default:
+		cxt.JSON(http.StatusOK, Result{
+			Code: 500,
+			Msg:  "系统错误",
+		})
+		// 补日志的
+	}
+}
+
+// 验证码登录
+func (h *UserHandler) LoginSms(cxt *gin.Context) {
+	type Req struct {
+		Phone string `json:"phone"`
+		Code  string `json:"code"`
+	}
+	var req Req
+	if err := cxt.Bind(&req); err != nil {
+		return
+	}
+	if req.Phone == "" {
+		cxt.JSON(http.StatusOK, Result{
+			Code: 400,
+			Msg:  "请输入手机号",
+		})
+		return
+	}
+	ok, err := h.codeSvc.Verify(cxt, userBiz, req.Phone, req.Code)
+	if err != nil {
+		cxt.JSON(http.StatusOK, Result{
+			Code: 500,
+			Msg:  "系统错误",
+		})
+		return
+	}
+	if !ok {
+		cxt.JSON(http.StatusOK, Result{
+			Code: 400,
+			Msg:  "验证码不对，请重新输入",
+		})
+		return
+	}
+	/**
+	  验证码正确，登录或者用户不存在则创建一个用户
+	  但是这里存在并发问题，有可能一个号码，创建2个用户，所以要将phone设为uniqe
+	*/
+	user, err := h.svc.FindOrCreate(cxt, req.Phone)
+	if err != nil {
+		cxt.JSON(http.StatusOK, Result{
+			Code: 500,
+			Msg:  "系统错误",
+		})
+		return
+	}
+	h.setToken(cxt, user.Id)
+	cxt.JSON(http.StatusOK, Result{
+		Code: 200,
+		Msg:  "登录成功",
+	})
 }
 
 type UserClaim struct {

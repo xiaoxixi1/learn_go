@@ -17,7 +17,8 @@ func (lm *LoginJWTMiddleware) CheckLoginJWTBuild() gin.HandlerFunc {
 	return func(cxt *gin.Context) {
 		url := cxt.Request.URL.Path
 		println(url)
-		if url == "/users/signup" || url == "/users/login" {
+		if url == "/users/signup" || url == "/users/login" || url == "/users/login_sms/code/send" || url == "/users/login_sms" {
+
 			// 不需要校验
 			return
 		}

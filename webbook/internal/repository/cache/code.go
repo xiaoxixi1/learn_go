@@ -17,12 +17,12 @@ var (
 	VerifyTooManyError = errors.New("验证码已失效")
 )
 
-type Codecache struct {
+type CodeCache struct {
 	cmd redis.Cmdable
 }
 
-func newCodecache(cmd redis.Cmdable) *Codecache {
-	return &Codecache{
+func NewCodeCache(cmd redis.Cmdable) *CodeCache {
+	return &CodeCache{
 		cmd: cmd,
 	}
 }
@@ -41,8 +41,8 @@ func newCodecache(cmd redis.Cmdable) *Codecache {
 	         2 就是这里利用redis单线程的机制，使用lua脚本，GET校验验证码和存储验证码,redis
 	         会挨个执行每个lua脚本
 */
-func (c *Codecache) Set(cxt context.Context, biz, phone, code string) error {
-	res, err := c.cmd.Eval(cxt, luaSetCode, []string{c.key(biz, phone), code}).Int()
+func (c *CodeCache) Set(cxt context.Context, biz, phone, code string) error {
+	res, err := c.cmd.Eval(cxt, luaSetCode, []string{c.key(biz, phone)}, code).Int()
 	if err != nil {
 		return err //调用redis出了问题
 	}
@@ -56,8 +56,8 @@ func (c *Codecache) Set(cxt context.Context, biz, phone, code string) error {
 	}
 }
 
-func (c *Codecache) Verify(cxt context.Context, biz, phone, code string) (bool, error) {
-	res, err := c.cmd.Eval(cxt, luaVerifyCode, []string{c.key(biz, phone), code}).Int()
+func (c *CodeCache) Verify(cxt context.Context, biz, phone, code string) (bool, error) {
+	res, err := c.cmd.Eval(cxt, luaVerifyCode, []string{c.key(biz, phone)}, code).Int()
 	if err != nil {
 		return false, err //调用redis出了问题
 	}
@@ -71,6 +71,7 @@ func (c *Codecache) Verify(cxt context.Context, biz, phone, code string) (bool, 
 	}
 }
 
-func (c *Codecache) key(biz string, phone string) string {
+func (c *CodeCache) key(biz string, phone string) string {
+	fmt.Printf("phone_code:%s:%s", biz, phone)
 	return fmt.Sprintf("phone_code:%s:%s", biz, phone)
 }

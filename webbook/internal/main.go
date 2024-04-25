@@ -13,6 +13,7 @@ import (
 	"project_go/webbook/internal/repository/cache"
 	"project_go/webbook/internal/repository/dao"
 	"project_go/webbook/internal/service"
+	"project_go/webbook/internal/service/sms/localmodel"
 	"project_go/webbook/internal/web"
 	"project_go/webbook/pkg/ginx/middleware/ratelimit"
 
@@ -32,9 +33,13 @@ func main() {
 	server := InitWebServer(redisClient)
 	ud := dao.NewUserDao(db)
 	uc := cache.NewUserCache(redisClient)
+	cc := cache.NewCodeCache(redisClient)
 	ur := repository.NewUseRepository(ud, uc)
+	cr := repository.NewCodeRepo(cc)
 	us := service.NewUserService(ur)
-	userHandler := web.NewUserHandler(us)
+	localSms := localmodel.NewService()
+	cs := service.NewCodeService(cr, localSms)
+	userHandler := web.NewUserHandler(us, cs)
 	userHandler.RegisterRoutes(server)
 	//server := gin.Default()
 	//server.GET("/hello", func(context *gin.Context) {
