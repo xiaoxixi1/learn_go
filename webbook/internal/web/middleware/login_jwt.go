@@ -54,7 +54,7 @@ func (lm *LoginJWTMiddleware) CheckLoginJWTBuild() gin.HandlerFunc {
 		expireTime := uc.ExpiresAt
 		// 如果过期时间小于20s则进行刷新
 		if expireTime.Sub(time.Now()) > time.Second*20 {
-			uc.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Second * 30))
+			uc.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute * 30))
 			tokenStr, err = token.SignedString(web.JWTKEY)
 			if err != nil {
 				//只是刷新时间时间，登录校验成功，所以不中断，只打印日志
