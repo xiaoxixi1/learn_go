@@ -31,15 +31,7 @@ func main() {
 		Addr: config.Config.Redis.Addr,
 	})
 	server := InitWebServer(redisClient)
-	ud := dao.NewUserDao(db)
-	uc := cache.NewUserCache(redisClient)
-	cc := cache.NewCodeCache(redisClient)
-	ur := repository.NewUseRepository(ud, uc)
-	cr := repository.NewCodeRepo(cc)
-	us := service.NewUserService(ur)
-	localSms := localmodel.NewService()
-	cs := service.NewCodeService(cr, localSms)
-	userHandler := web.NewUserHandler(us, cs)
+	userHandler := InitUserHandler(db, redisClient)
 	userHandler.RegisterRoutes(server)
 	//server := gin.Default()
 	//server.GET("/hello", func(context *gin.Context) {
@@ -90,6 +82,18 @@ func InitWebServer(redisClient redis.Cmdable) *gin.Engine {
 	})
 	useJWT(server)
 	return server
+}
+
+func InitUserHandler(db *gorm.DB, redisClient redis.Cmdable) *web.UserHandler {
+	ud := dao.NewUserDao(db)
+	uc := cache.NewUserCache(redisClient)
+	cc := cache.NewCodeCache(redisClient)
+	ur := repository.NewUseRepository(ud, uc)
+	cr := repository.NewCodeRepo(cc)
+	us := service.NewUserService(ur)
+	localSms := localmodel.NewService()
+	cs := service.NewCodeService(cr, localSms)
+	return web.NewUserHandler(us, cs)
 }
 
 /**
