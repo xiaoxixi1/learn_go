@@ -35,6 +35,12 @@ import (
    2 运行wire命令（开始组装）
   原理：抽象语法树
   但是wire不知单例模式，如果有多此调用initDB，就会生成多个gorm.DB
+  缺点：
+   1 缺乏根据环境使用不用实现的能力
+   2 缺乏根据接口查找实现的能力
+   3 缺乏根据类型查找所有实力的能力
+  好处：
+    很清晰，可控性非常强
 */
 
 func InitUserRepository() *repository.UserRepository {
