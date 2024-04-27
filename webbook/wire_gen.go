@@ -9,7 +9,7 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"project_go/webbook/internal/repository"
-	"project_go/webbook/internal/repository/cache"
+	"project_go/webbook/internal/repository/cache/redis"
 	"project_go/webbook/internal/repository/dao"
 	"project_go/webbook/internal/service"
 	"project_go/webbook/internal/web"
@@ -18,15 +18,21 @@ import (
 
 // Injectors from wire.go:
 
+/*
+*
+
+	这里有一个冲突的点是：在使用wire的时候，初始化方法NewXXXX最好返回接口
+	但是go的推荐做法是返回具体类型，这和wire是冲突的
+*/
 func InitWebServer() *gin.Engine {
 	cmdable := ioc.InitRedis()
 	v := ioc.InitGinMiddlewares(cmdable)
 	db := ioc.InitDb()
 	userDao := dao.NewUserDao(db)
-	userCache := cache.NewUserCache(cmdable)
+	userCache := redis.NewUserCache(cmdable)
 	userRepository := repository.NewUseRepository(userDao, userCache)
 	userService := service.NewUserService(userRepository)
-	codeCache := cache.NewCodeCache(cmdable)
+	codeCache := redis.NewCodeCache(cmdable)
 	codeRepo := repository.NewCodeRepo(codeCache)
 	smsService := ioc.InitSmsSendService()
 	codeService := service.NewCodeService(codeRepo, smsService)

@@ -15,15 +15,30 @@ var (
 	UserNotFoundError     = repository.UserNotFoundErr
 )
 
-type UserService struct {
-	repo *repository.UserRepository
+/*
+*
+
+	面向接口编程是指将应用程序定义为组件的集合，组件和组件之间的通信必须通过接口
+	如果要用到另外一个类型，那么你肯定用的是接口
+	结合依赖注入，如果A调用B，B是一个接口，而后在初始化的时候，注入了一个实现了B接口的实例
+*/
+type UserService interface {
+	SignUp(cxt context.Context, user domain.User) error
+	Login(cxt context.Context, email string, password string) (domain.User, error)
+	Edit(cxt context.Context, user domain.User) error
+	Profile(cxt context.Context, userid int64) (domain.User, error)
+	FindOrCreate(cxt context.Context, phone string) (domain.User, error)
 }
 
-func NewUserService(repo *repository.UserRepository) *UserService {
-	return &UserService{repo: repo}
+type userService struct {
+	repo repository.UserRepository
 }
 
-func (us *UserService) SignUp(cxt context.Context, user domain.User) error {
+func NewUserService(repo repository.UserRepository) UserService {
+	return &userService{repo: repo}
+}
+
+func (us *userService) SignUp(cxt context.Context, user domain.User) error {
 	pHash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -32,7 +47,7 @@ func (us *UserService) SignUp(cxt context.Context, user domain.User) error {
 	return us.repo.Create(cxt, user)
 }
 
-func (us *UserService) Login(cxt context.Context, email string, password string) (domain.User, error) {
+func (us *userService) Login(cxt context.Context, email string, password string) (domain.User, error) {
 	user, err := us.repo.FindByEmail(cxt, email)
 	if err == repository.UserNotFoundErr {
 		return domain.User{}, InvalidPasswordOrUser
@@ -48,15 +63,15 @@ func (us *UserService) Login(cxt context.Context, email string, password string)
 	return user, err
 }
 
-func (us *UserService) Edit(cxt context.Context, user domain.User) error {
+func (us *userService) Edit(cxt context.Context, user domain.User) error {
 	return us.repo.UpdateNoSensitiveInfo(cxt, user)
 }
 
-func (us *UserService) Profile(cxt context.Context, userid int64) (domain.User, error) {
+func (us *userService) Profile(cxt context.Context, userid int64) (domain.User, error) {
 	return us.repo.FindById(cxt, userid)
 }
 
-func (us *UserService) FindOrCreate(cxt context.Context, phone string) (domain.User, error) {
+func (us *userService) FindOrCreate(cxt context.Context, phone string) (domain.User, error) {
 	user, err := us.repo.FindByPhone(cxt, phone)
 	if err != UserNotFoundError {
 		// 如果不是没找到，是nil或者是别的报错，都是直接返回

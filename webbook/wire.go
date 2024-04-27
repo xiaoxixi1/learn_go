@@ -6,13 +6,19 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 	"project_go/webbook/internal/repository"
-	"project_go/webbook/internal/repository/cache"
+	"project_go/webbook/internal/repository/cache/redis"
 	"project_go/webbook/internal/repository/dao"
 	"project_go/webbook/internal/service"
 	"project_go/webbook/internal/web"
 	"project_go/webbook/ioc"
 )
 
+/*
+*
+
+	这里有一个冲突的点是：在使用wire的时候，初始化方法NewXXXX最好返回接口
+	但是go的推荐做法是返回具体类型，这和wire是冲突的
+*/
 func InitWebServer() *gin.Engine {
 	wire.Build(
 		// 三方件
@@ -20,8 +26,8 @@ func InitWebServer() *gin.Engine {
 		ioc.InitRedis,
 		// dao和cache
 		dao.NewUserDao,
-		cache.NewUserCache,
-		cache.NewCodeCache,
+		redis.NewCodeCache,
+		redis.NewUserCache,
 		//repository
 		repository.NewUseRepository,
 		repository.NewCodeRepo,

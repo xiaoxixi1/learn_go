@@ -10,19 +10,24 @@ var (
 	SendTooManyError   = cache.SendTooManyError
 )
 
-type CodeRepo struct {
-	codeCache *cache.CodeCache
+type CodeRepo interface {
+	Set(cxt context.Context, biz, phone, code string) error
+	Verify(cxt context.Context, biz, phone, code string) (bool, error)
 }
 
-func NewCodeRepo(codeCache *cache.CodeCache) *CodeRepo {
-	return &CodeRepo{
+type CachedCodeRepo struct {
+	codeCache cache.CodeCache
+}
+
+func NewCodeRepo(codeCache cache.CodeCache) CodeRepo {
+	return &CachedCodeRepo{
 		codeCache: codeCache,
 	}
 }
 
-func (c *CodeRepo) Set(cxt context.Context, biz, phone, code string) error {
+func (c *CachedCodeRepo) Set(cxt context.Context, biz, phone, code string) error {
 	return c.codeCache.Set(cxt, biz, phone, code)
 }
-func (c *CodeRepo) Verify(cxt context.Context, biz, phone, code string) (bool, error) {
+func (c *CachedCodeRepo) Verify(cxt context.Context, biz, phone, code string) (bool, error) {
 	return c.codeCache.Verify(cxt, biz, phone, code)
 }

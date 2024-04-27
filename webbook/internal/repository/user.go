@@ -14,9 +14,17 @@ var (
 	UserNotFoundErr    = dao.RecordNotFoundErr
 )
 
-type UserRepository struct {
-	dao *dao.UserDao
-	c   *cache.UserCache
+type UserRepository interface {
+	Create(cxt context.Context, user domain.User) error
+	FindByEmail(cxt context.Context, email string) (domain.User, error)
+	UpdateNoSensitiveInfo(cxt context.Context, user domain.User) error
+	FindById(cxt context.Context, userid int64) (domain.User, error)
+	FindByPhone(cxt context.Context, phone string) (domain.User, error)
+}
+
+type CachedUserRepository struct {
+	dao dao.UserDao
+	c   cache.UserCache
 }
 
 // NewUserRepositoryV2 强耦合到了 JSON
@@ -42,17 +50,17 @@ type UserRepository struct {
 //}
 
 // 依赖注入的写法
-func NewUseRepository(dao *dao.UserDao, cache *cache.UserCache) *UserRepository {
-	return &UserRepository{
+func NewUseRepository(dao dao.UserDao, cache cache.UserCache) UserRepository {
+	return &CachedUserRepository{
 		dao: dao,
 		c:   cache,
 	}
 }
-func (repo *UserRepository) Create(cxt context.Context, user domain.User) error {
+func (repo *CachedUserRepository) Create(cxt context.Context, user domain.User) error {
 	return repo.dao.Insert(cxt, repo.toEntity(user))
 }
 
-func (repo *UserRepository) FindByEmail(cxt context.Context, email string) (domain.User, error) {
+func (repo *CachedUserRepository) FindByEmail(cxt context.Context, email string) (domain.User, error) {
 	us, err := repo.dao.QueryByEmail(cxt, email)
 	if err != nil {
 		return domain.User{}, err
@@ -60,7 +68,7 @@ func (repo *UserRepository) FindByEmail(cxt context.Context, email string) (doma
 	return repo.toDomain(us), nil
 }
 
-func (repo *UserRepository) toDomain(user dao.User) domain.User {
+func (repo *CachedUserRepository) toDomain(user dao.User) domain.User {
 	return domain.User{
 		Id:              user.Id,
 		Email:           user.Email.String,
@@ -72,7 +80,7 @@ func (repo *UserRepository) toDomain(user dao.User) domain.User {
 	}
 }
 
-func (repo *UserRepository) toEntity(user domain.User) *dao.User {
+func (repo *CachedUserRepository) toEntity(user domain.User) *dao.User {
 	return &dao.User{
 		Id: user.Id,
 		Email: sql.NullString{
@@ -90,7 +98,7 @@ func (repo *UserRepository) toEntity(user domain.User) *dao.User {
 	}
 }
 
-func (repo *UserRepository) UpdateNoSensitiveInfo(cxt context.Context, user domain.User) error {
+func (repo *CachedUserRepository) UpdateNoSensitiveInfo(cxt context.Context, user domain.User) error {
 	return repo.dao.Update(cxt, dao.User{
 		Id:              user.Id,
 		Name:            user.Name,
@@ -99,7 +107,7 @@ func (repo *UserRepository) UpdateNoSensitiveInfo(cxt context.Context, user doma
 	})
 }
 
-func (repo *UserRepository) FindById(cxt context.Context, userid int64) (domain.User, error) {
+func (repo *CachedUserRepository) FindById(cxt context.Context, userid int64) (domain.User, error) {
 	du, err := repo.c.Get(cxt, userid)
 	// 缓存命中
 	if err == nil {
@@ -114,7 +122,7 @@ func (repo *UserRepository) FindById(cxt context.Context, userid int64) (domain.
 	return du, nil
 }
 
-func (repo *UserRepository) FindByPhone(cxt context.Context, phone string) (domain.User, error) {
+func (repo *CachedUserRepository) FindByPhone(cxt context.Context, phone string) (domain.User, error) {
 	us, err := repo.dao.QueryByPhone(cxt, phone)
 	if err != nil {
 		return domain.User{}, err
