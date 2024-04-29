@@ -50,6 +50,7 @@ func (us *userService) SignUp(cxt context.Context, user domain.User) error {
 func (us *userService) Login(cxt context.Context, email string, password string) (domain.User, error) {
 	user, err := us.repo.FindByEmail(cxt, email)
 	if err == repository.UserNotFoundErr {
+
 		return domain.User{}, InvalidPasswordOrUser
 	}
 	if err != nil {
@@ -58,7 +59,7 @@ func (us *userService) Login(cxt context.Context, email string, password string)
 	// 验证密码是否正确
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
-		return user, InvalidPasswordOrUser
+		return domain.User{}, InvalidPasswordOrUser
 	}
 	return user, err
 }
