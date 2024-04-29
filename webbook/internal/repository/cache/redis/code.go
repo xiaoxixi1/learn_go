@@ -4,7 +4,6 @@ import (
 	"context"
 	_ "embed"
 	"errors"
-	"fmt"
 	"github.com/redis/go-redis/v9"
 	"project_go/webbook/internal/repository/cache"
 )
@@ -41,7 +40,7 @@ func NewCodeCache(cmd redis.Cmdable) cache.CodeCache {
 	         会挨个执行每个lua脚本
 */
 func (c *RedisCodeCache) Set(cxt context.Context, biz, phone, code string) error {
-	res, err := c.cmd.Eval(cxt, luaSetCode, []string{c.key(biz, phone)}, code).Int()
+	res, err := c.cmd.Eval(cxt, luaSetCode, []string{cache.Key(biz, phone)}, code).Int()
 	if err != nil {
 		return err //调用redis出了问题
 	}
@@ -56,7 +55,7 @@ func (c *RedisCodeCache) Set(cxt context.Context, biz, phone, code string) error
 }
 
 func (c *RedisCodeCache) Verify(cxt context.Context, biz, phone, code string) (bool, error) {
-	res, err := c.cmd.Eval(cxt, luaVerifyCode, []string{c.key(biz, phone)}, code).Int()
+	res, err := c.cmd.Eval(cxt, luaVerifyCode, []string{cache.Key(biz, phone)}, code).Int()
 	if err != nil {
 		return false, err //调用redis出了问题
 	}
@@ -68,9 +67,4 @@ func (c *RedisCodeCache) Verify(cxt context.Context, biz, phone, code string) (b
 	default:
 		return true, nil
 	}
-}
-
-func (c *RedisCodeCache) key(biz string, phone string) string {
-	fmt.Printf("phone_code:%s:%s", biz, phone)
-	return fmt.Sprintf("phone_code:%s:%s", biz, phone)
 }

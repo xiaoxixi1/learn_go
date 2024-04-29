@@ -9,6 +9,7 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"project_go/webbook/internal/repository"
+	"project_go/webbook/internal/repository/cache/freecache"
 	"project_go/webbook/internal/repository/cache/redis"
 	"project_go/webbook/internal/repository/dao"
 	"project_go/webbook/internal/service"
@@ -32,7 +33,8 @@ func InitWebServer() *gin.Engine {
 	userCache := redis.NewUserCache(cmdable)
 	userRepository := repository.NewUseRepository(userDao, userCache)
 	userService := service.NewUserService(userRepository)
-	codeCache := redis.NewCodeCache(cmdable)
+	cache := ioc.InitFreeCache()
+	codeCache := freecache.NewCodeFreeCache(cache)
 	codeRepo := repository.NewCodeRepo(codeCache)
 	smsService := ioc.InitSmsSendService()
 	codeService := service.NewCodeService(codeRepo, smsService)

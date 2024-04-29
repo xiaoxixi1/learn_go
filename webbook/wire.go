@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 	"project_go/webbook/internal/repository"
+	"project_go/webbook/internal/repository/cache/freecache"
 	"project_go/webbook/internal/repository/cache/redis"
 	"project_go/webbook/internal/repository/dao"
 	"project_go/webbook/internal/service"
@@ -24,9 +25,10 @@ func InitWebServer() *gin.Engine {
 		// 三方件
 		ioc.InitDb,
 		ioc.InitRedis,
+		ioc.InitFreeCache,
 		// dao和cache
 		dao.NewUserDao,
-		redis.NewCodeCache,
+		freecache.NewCodeFreeCache,
 		redis.NewUserCache,
 		//repository
 		repository.NewUseRepository,

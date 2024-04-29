@@ -3,6 +3,7 @@ module project_go
 go 1.18
 
 require (
+	github.com/coocood/freecache v1.2.4
 	github.com/dlclark/regexp2 v1.11.0
 	github.com/ecodeclub/ekit v0.0.9
 	github.com/gin-contrib/cors v1.7.1
