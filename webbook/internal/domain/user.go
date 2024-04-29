@@ -10,4 +10,6 @@ type User struct {
 	Birthday        time.Time
 	PersonalProfile string // 个人简介
 	Phone           string
+	CTime           time.Time
+	UTime           time.Time
 }

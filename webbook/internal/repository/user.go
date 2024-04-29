@@ -77,6 +77,8 @@ func (repo *CachedUserRepository) toDomain(user dao.User) domain.User {
 		Password:        user.Password,
 		Birthday:        time.UnixMilli(user.Birthday),
 		PersonalProfile: user.PersonalProfile,
+		CTime:           time.UnixMilli(user.CTime),
+		UTime:           time.UnixMilli(user.UTime),
 	}
 }
 
@@ -95,6 +97,8 @@ func (repo *CachedUserRepository) toEntity(user domain.User) *dao.User {
 		Password:        user.Password,
 		Birthday:        user.Birthday.UnixMilli(),
 		PersonalProfile: user.PersonalProfile,
+		CTime:           user.CTime.UnixMilli(),
+		UTime:           user.UTime.UnixMilli(),
 	}
 }
 
