@@ -11,6 +11,7 @@ import (
 )
 
 func InitSmsSendService() sms.Service {
+	//	return ratelimit.NewRateLimitSMSService(localmodel.NewService(),limiter.NewRedisSlidingWindowLimiter(),"")
 	// 没有腾讯云的APP ID，使用本地的
 	return localmodel.NewService()
 	// 如果有需要，就可以用这个
