@@ -7,6 +7,7 @@ import (
 	"project_go/webbook/internal/web"
 	"project_go/webbook/internal/web/middleware"
 	"project_go/webbook/pkg/ginx/middleware/ratelimit"
+	"project_go/webbook/pkg/limiter"
 	"time"
 )
 
@@ -35,7 +36,7 @@ func InitGinMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
 		}), func(ctx *gin.Context) {
 			println("这里执行一个middleware")
 		},
-		ratelimit.NewBuilder(redisClient, time.Second, 100).Build(),
+		ratelimit.NewBuilder(limiter.NewRedisSlidingWindowLimiter(redisClient, time.Second, 100)).Build(),
 		(&middleware.LoginJWTMiddleware{}).CheckLoginJWTBuild(),
 	}
 }

@@ -8,4 +8,5 @@ mock:
 	@mockgen -source=./webbook/internal/repository/dao/user.go -package=daomocks -destination=./webbook/internal/repository/dao/mocks/user.mock.go
 	@mockgen -source=./webbook/internal/repository/cache/user.go -package=cachemocks -destination=./webbook/internal/repository/cache/mocks/user.mock.go
 	@mockgen -source=./webbook/internal/repository/cache/code.go -package=cachemocks -destination=./webbook/internal/repository/cache/mocks/code.mock.go
+	@mockgen -source=./webbook/pkg/limiter/types.go -package=limitermocks -destination=./webbook/pkg/limiter/mocks/limiter.mock.go
 	@go mod tidy
