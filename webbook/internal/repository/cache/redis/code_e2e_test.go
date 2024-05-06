@@ -1,43 +1,32 @@
-package integration
+package redis
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
-	"github.com/gin-gonic/gin"
+	"errors"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"net/http/httptest"
-	"project_go/webbook/integration/startup"
-	"project_go/webbook/internal/web"
+	"project_go/webbook/internal/repository/cache"
 	"testing"
 	"time"
 )
 
-/**
-集成测试单独放在一个包里面
-*/
-// 可以少输出很多debug日志
-func init() {
-	gin.SetMode(gin.ReleaseMode)
-}
-
-func TestUserHandle_sendCode(t *testing.T) {
-	rdb := startup.InitRedis()
-	service := startup.InitWebServer()
+func TestRedisUserCache_e2e_Set(t *testing.T) {
+	rdb := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
 	testCases := []struct {
-		name string
+		name   string
+		before func(t *testing.T)
+		after  func(t *testing.T)
+		ctx    context.Context
+		biz    string
+		phone  string
+		code   string
 
-		phone string
-
-		wantCode int
-		wantBody web.Result
-		before   func(t *testing.T)
-		after    func(t *testing.T)
+		wantError error
 	}{
 		{
-			name: "发送成功的用例",
+			name: "设置成功",
 			before: func(t *testing.T) {
 
 			},
@@ -47,22 +36,21 @@ func TestUserHandle_sendCode(t *testing.T) {
 				key := "phone_code:userLogin:12345"
 				code, err := rdb.Get(ctx, key).Result()
 				assert.NoError(t, err)
-				assert.True(t, len(code) > 0)
+				assert.Equal(t, code, "123456")
 				dur, err := rdb.TTL(ctx, key).Result()
 				assert.NoError(t, err)
 				assert.True(t, dur > time.Minute*9)
 				err = rdb.Del(ctx, key).Err()
 				assert.NoError(t, err)
 			},
-			phone:    "12345",
-			wantCode: http.StatusOK,
-			wantBody: web.Result{
-				Msg: "发送成功",
-			},
+			ctx:       context.Background(),
+			biz:       "userLogin",
+			phone:     "12345",
+			code:      "123456",
+			wantError: nil,
 		},
 		{
-			name:  "发送消息过于频繁",
-			phone: "12345",
+			name: "发送太频繁",
 			before: func(t *testing.T) {
 				ctx, cancle := context.WithTimeout(context.Background(), time.Second*10)
 				defer cancle()
@@ -70,7 +58,6 @@ func TestUserHandle_sendCode(t *testing.T) {
 				//提前准备一条数据
 				err := rdb.Set(ctx, key, "123456", time.Minute*9+time.Second*50).Err()
 				assert.NoError(t, err)
-
 			},
 			after: func(t *testing.T) {
 				ctx, cancle := context.WithTimeout(context.Background(), time.Second*10)
@@ -79,26 +66,22 @@ func TestUserHandle_sendCode(t *testing.T) {
 				// 删除数据
 				_, err := rdb.Del(ctx, key).Result()
 				assert.NoError(t, err)
-
 			},
-			wantCode: http.StatusOK,
-			wantBody: web.Result{
-				Code: 400,
-				Msg:  "短信发送太频繁，请稍后再试",
-			},
+			ctx:       context.Background(),
+			biz:       "userLogin",
+			phone:     "12345",
+			code:      "123456",
+			wantError: cache.SendTooManyError,
 		},
 		{
-			name:  "系统错误",
-			phone: "12345",
+			name: "没有设置过期时间",
 			before: func(t *testing.T) {
 				ctx, cancle := context.WithTimeout(context.Background(), time.Second*10)
 				defer cancle()
 				key := "phone_code:userLogin:12345"
-				//提前准备一条过期的数据
+				//提前准备一条数据
 				err := rdb.Set(ctx, key, "123456", 0).Err()
 				assert.NoError(t, err)
-				//dur, err := rdb.TTL(ctx, key).Result()
-
 			},
 			after: func(t *testing.T) {
 				ctx, cancle := context.WithTimeout(context.Background(), time.Second*10)
@@ -107,33 +90,22 @@ func TestUserHandle_sendCode(t *testing.T) {
 				// 删除数据
 				_, err := rdb.Del(ctx, key).Result()
 				assert.NoError(t, err)
-
 			},
-			wantCode: http.StatusOK,
-			wantBody: web.Result{
-				Code: 500,
-				Msg:  "系统错误",
-			},
+			ctx:       context.Background(),
+			biz:       "userLogin",
+			phone:     "12345",
+			code:      "123456",
+			wantError: errors.New("验证码存在，但是没有过期时间"),
 		},
 	}
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			defer tc.after(t)
-
-			// 准备请求
-			req, err := http.NewRequest(http.MethodPost, "/users/login_sms/code/send",
-				bytes.NewReader([]byte(fmt.Sprintf(`{"phone":"%s"}`, tc.phone))))
-			assert.NoError(t, err)
-			req.Header.Set("Content-Type", "application/json")
-			recorder := httptest.NewRecorder()
-			//执行请求
-			service.ServeHTTP(recorder, req)
-			// 断言结果
-			assert.Equal(t, tc.wantCode, recorder.Code)
-			var respons web.Result
-			json.NewDecoder(recorder.Body).Decode(&respons)
-			assert.Equal(t, tc.wantBody, respons)
+			codeCache := NewCodeCache(rdb)
+			err := codeCache.Set(tc.ctx, tc.biz, tc.phone, tc.code)
+			assert.Equal(t, tc.wantError, err)
 		})
 	}
 }
