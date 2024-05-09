@@ -4,14 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	uuid "github.com/lithammer/shortuuid/v4"
 	"net/http"
 	"net/url"
 	"project_go/webbook/internal/domain"
 )
 
 type Service interface {
-	AuthURL(ctx context.Context) (string, error)
+	AuthURL(ctx context.Context, state string) (string, error)
 	VerifyCode(ctx context.Context, code string) (domain.WeChatDomain, error)
 }
 
@@ -59,8 +58,7 @@ const urlPattern = "open.weixin.qq.com/connect/qrconnect?appid=%s&redirect_uri=%
 
 var redirectURL = url.PathEscape("https://meoying.com/oauth2/wechat/callback")
 
-func (w WeChatAuthService) AuthURL(ctx context.Context) (string, error) {
-	state := uuid.New()
+func (w WeChatAuthService) AuthURL(ctx context.Context, state string) (string, error) {
 	return fmt.Sprintf(urlPattern, w.appId, redirectURL, state), nil
 }
 
