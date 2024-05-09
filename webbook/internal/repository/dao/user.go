@@ -21,6 +21,7 @@ type UserDao interface {
 	Update(cxt context.Context, user User) error
 	QueryById(cxt context.Context, userid int64) (User, error)
 	QueryByPhone(cxt context.Context, phone string) (User, error)
+	QueryByOpenId(cxt context.Context, openId string) (User, error)
 }
 
 type GormUserDao struct {
@@ -67,6 +68,12 @@ func (ud *GormUserDao) QueryByPhone(cxt context.Context, phone string) (User, er
 	return result, err
 }
 
+func (ud *GormUserDao) QueryByOpenId(cxt context.Context, openId string) (User, error) {
+	var result User
+	err := ud.db.WithContext(cxt).Where("openId=?", openId).First(&result).Error
+	return result, err
+}
+
 /*
 *
 
@@ -85,4 +92,7 @@ type User struct {
 	// 创建时间，使用UTC 0的毫秒数，时区的转换一般统一让前端转换，或者留到要传给前端时转换
 	CTime int64
 	UTime int64
+
+	OpenId  sql.NullString `gorm:"unique"`
+	UnionId sql.NullString
 }

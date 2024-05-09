@@ -9,7 +9,6 @@ import (
 	"time"
 	//"regexp" // 官方正则表达式不支持?=的写法
 	regexp "github.com/dlclark/regexp2"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 /*
@@ -19,6 +18,7 @@ import (
 	    同时定义一个RegisterRoutes来注册所有的路由
 */
 type UserHandler struct {
+	JwtHandler
 	// 使用正则表达式预编译来提高性能
 	emailRegex    *regexp.Regexp
 	passwordRegex *regexp.Regexp
@@ -150,26 +150,6 @@ func (h *UserHandler) LoginJWT(cxt *gin.Context) {
 	default:
 		cxt.String(http.StatusOK, "系统错误")
 	}
-}
-
-func (h *UserHandler) setToken(cxt *gin.Context, userId int64) {
-	us := UserClaim{
-		userid:    userId,
-		UserAgent: cxt.GetHeader("User-Agent"),
-		RegisteredClaims: jwt.RegisteredClaims{
-			// 30S后过期
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 60)),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, us)
-	tokenStr, err := token.SignedString([]byte(JWTKEY))
-	if err != nil {
-		cxt.String(http.StatusOK, "系统错误")
-		return
-	}
-	// 自定义头部传输token，前端配合接收
-	cxt.Header("x-jwt-token", tokenStr)
-	cxt.String(http.StatusOK, "登录成功")
 }
 
 // 登录用户
@@ -376,11 +356,3 @@ func (h *UserHandler) LoginSms(cxt *gin.Context) {
 		Msg:  "登录成功",
 	})
 }
-
-type UserClaim struct {
-	jwt.RegisteredClaims
-	userid    int64
-	UserAgent string
-}
-
-var JWTKEY = []byte("Bhy3mfsThsmBvfpNwyCF2FEzS4GfR8v4")

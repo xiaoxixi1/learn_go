@@ -28,6 +28,7 @@ type UserService interface {
 	Edit(cxt context.Context, user domain.User) error
 	Profile(cxt context.Context, userid int64) (domain.User, error)
 	FindOrCreate(cxt context.Context, phone string) (domain.User, error)
+	FindOrCreateByWechat(cxt context.Context, wechatInfo domain.WeChatDomain) (domain.User, error)
 }
 
 type userService struct {
@@ -88,4 +89,22 @@ func (us *userService) FindOrCreate(cxt context.Context, phone string) (domain.U
 	}
 	// 如果是用户已经存在，或者没有错误，则再查一遍
 	return us.repo.FindByPhone(cxt, phone)
+}
+
+func (us *userService) FindOrCreateByWechat(cxt context.Context, wechatInfo domain.WeChatDomain) (domain.User, error) {
+	user, err := us.repo.FindByOpenId(cxt, wechatInfo.OpenId)
+	if err != UserNotFoundError {
+		// 如果不是没找到，是nil或者是别的报错，都是直接返回
+		return user, err
+	}
+	// 否则就是用户没有找到，需要注册
+	err = us.repo.Create(cxt, domain.User{
+		WechatInfo: wechatInfo,
+	})
+	// 如果是别的报错，则直接返回
+	if err != nil && err != UserDuplicateError {
+		return domain.User{}, err
+	}
+	// 如果是用户已经存在，或者没有错误，则再查一遍
+	return us.repo.FindByOpenId(cxt, wechatInfo.OpenId)
 }
