@@ -3,11 +3,8 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"log"
 	"net/http"
 	"project_go/webbook/internal/web"
-	"strings"
-	"time"
 )
 
 type LoginJWTMiddleware struct {
@@ -26,17 +23,7 @@ func (lm *LoginJWTMiddleware) CheckLoginJWTBuild() gin.HandlerFunc {
 			// 不需要校验
 			return
 		}
-		authcode := cxt.GetHeader("Authorization")
-		if authcode == "" {
-			cxt.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
-		authSeg := strings.Split(authcode, " ")
-		if len(authSeg) != 2 {
-			cxt.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
-		tokenStr := authSeg[1]
+		tokenStr := web.ExtractToken(cxt)
 		uc := web.UserClaim{}
 		token, err := jwt.ParseWithClaims(tokenStr, &uc, func(token *jwt.Token) (interface{}, error) {
 			return web.JWTKEY, nil
@@ -55,18 +42,19 @@ func (lm *LoginJWTMiddleware) CheckLoginJWTBuild() gin.HandlerFunc {
 			cxt.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
+		// 这一部分有了长短token之后就不需要了
 		// 刷新token
-		expireTime := uc.ExpiresAt
-		// 如果过期时间小于20s则进行刷新
-		if expireTime.Sub(time.Now()) > time.Second*20 {
-			uc.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute * 30))
-			tokenStr, err = token.SignedString(web.JWTKEY)
-			if err != nil {
-				//只是刷新时间时间，登录校验成功，所以不中断，只打印日志
-				log.Println(err)
-			}
-			cxt.Header("x-jwt-token", tokenStr)
-		}
+		//expireTime := uc.ExpiresAt
+		//// 如果过期时间小于20s则进行刷新
+		//if expireTime.Sub(time.Now()) > time.Second*20 {
+		//	uc.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute * 30))
+		//	tokenStr, err = token.SignedString(web.JWTKEY)
+		//	if err != nil {
+		//		//只是刷新时间时间，登录校验成功，所以不中断，只打印日志
+		//		log.Println(err)
+		//	}
+		//	cxt.Header("x-jwt-token", tokenStr)
+		//}
 		// 将user的信息缓存下来，便于profile或者edit接口使用
 		cxt.Set("user", uc)
 

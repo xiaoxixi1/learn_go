@@ -32,7 +32,7 @@ func InitGinMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
 			},
 			// 因为自定义了头部，所以跨域要加上配置
 			// 约定后端放入x-jwt-token中，前端通过authorization 传回后端
-			ExposeHeaders: []string{"x-jwt-token"},
+			ExposeHeaders: []string{"x-jwt-token", "x-jwt-refresh-token"},
 			MaxAge:        12 * time.Hour,
 		}), func(ctx *gin.Context) {
 			println("这里执行一个middleware")

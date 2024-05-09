@@ -3,6 +3,7 @@ package web
 import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"project_go/webbook/internal/domain"
 	"project_go/webbook/internal/service"
@@ -18,7 +19,7 @@ import (
 	    同时定义一个RegisterRoutes来注册所有的路由
 */
 type UserHandler struct {
-	JwtHandler
+	jwtHandler *JwtHandler
 	// 使用正则表达式预编译来提高性能
 	emailRegex    *regexp.Regexp
 	passwordRegex *regexp.Regexp
@@ -41,6 +42,7 @@ func NewUserHandler(svc service.UserService, codeSvc service.CodeService) *UserH
 		nameRegex:     regexp.MustCompile(nameRegexPattern, regexp.None),
 		svc:           svc,
 		codeSvc:       codeSvc,
+		jwtHandler:    NewJwtHandler(),
 	}
 }
 
@@ -66,6 +68,8 @@ func (h *UserHandler) RegisterRoutes(server *gin.Engine) {
 	*/
 	ug.POST("/login_sms/code/send", h.SmsSendLoginCode)
 	ug.POST("/login_sms", h.LoginSms)
+
+	ug.GET("/refresh_token", h.RefreshToken)
 
 }
 
@@ -142,7 +146,8 @@ func (h *UserHandler) LoginJWT(cxt *gin.Context) {
 	us, err := h.svc.Login(cxt, req.Email, req.Password)
 	switch err {
 	case nil:
-		h.setToken(cxt, us.Id)
+		h.jwtHandler.setToken(cxt, us.Id)
+		h.jwtHandler.setRefreshToken(cxt, us.Id)
 		return
 	case service.InvalidPasswordOrUser:
 		cxt.String(http.StatusOK, "账号或者密码不正确")
@@ -350,9 +355,33 @@ func (h *UserHandler) LoginSms(cxt *gin.Context) {
 		})
 		return
 	}
-	h.setToken(cxt, user.Id)
+	h.jwtHandler.setToken(cxt, user.Id)
+	h.jwtHandler.setRefreshToken(cxt, user.Id)
 	cxt.JSON(http.StatusOK, Result{
 		Code: 200,
 		Msg:  "登录成功",
+	})
+}
+
+func (h *UserHandler) RefreshToken(ctx *gin.Context) {
+	// 取出长token
+	tokenStr := ExtractToken(ctx)
+	var refreshClaim RefreshClaim
+	token, err := jwt.ParseWithClaims(tokenStr, &refreshClaim, func(token *jwt.Token) (interface{}, error) {
+		return h.jwtHandler.refreshKey, nil
+	})
+	//校验长token
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	if token == nil || !token.Valid {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	// 根据长token设置短token
+	h.jwtHandler.setToken(ctx, refreshClaim.userId)
+	ctx.JSON(http.StatusOK, Result{
+		Msg: "刷新成功",
 	})
 }

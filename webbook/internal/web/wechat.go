@@ -11,7 +11,7 @@ import (
 )
 
 type OAuth2WechatHandler struct {
-	JwtHandler
+	jwtHandler      *JwtHandler
 	svc             wechat.Service
 	userSvc         service.UserService
 	key             []byte
@@ -24,6 +24,7 @@ func NewOAuth2WechatHandler(svc wechat.Service, userSvc service.UserService) *OA
 		userSvc:         userSvc,
 		key:             []byte("k6CswdUm77WKcbM68UQUuxVsHSpTCwgB"),
 		stateCookieName: "jwt-state",
+		jwtHandler:      NewJwtHandler(),
 	}
 }
 
@@ -99,7 +100,8 @@ func (o *OAuth2WechatHandler) Callback(ctx *gin.Context) {
 		})
 		return
 	}
-	o.setToken(ctx, user.Id)
+	o.jwtHandler.setToken(ctx, user.Id)
+	o.jwtHandler.setRefreshToken(ctx, user.Id)
 	ctx.JSON(http.StatusOK, Result{
 		Code: 200,
 		Msg:  "登录成功",
